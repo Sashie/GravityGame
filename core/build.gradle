@@ -1,0 +1,37 @@
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+eclipse.project.name = appName + '-core'
+
+dependencies {
+  api "com.badlogicgames.box2dlights:box2dlights:$box2dlightsVersion"
+  api "com.badlogicgames.gdx-controllers:gdx-controllers-core:$gdxControllersVersion"
+  api "com.badlogicgames.gdx:gdx-ai:$aiVersion"
+  api "com.badlogicgames.gdx:gdx-box2d:$gdxVersion"
+  api "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
+  api "com.badlogicgames.gdx:gdx:$gdxVersion"
+  api "com.crashinvaders.vfx:gdx-vfx-core:$gdxVfxCoreVersion"
+  api "com.crashinvaders.vfx:gdx-vfx-effects:$gdxVfxEffectsVersion"
+  api "com.github.crykn.guacamole:core:$guacamoleVersion"
+  api "com.github.crykn.guacamole:gdx:$guacamoleVersion"
+  api "com.github.payne911:PieMenu:$pieMenuVersion"
+  api "com.github.raeleus.TenPatch:tenpatch:$tenPatchVersion"
+  api "com.github.raeleus.stripe:stripe:$stripeVersion"
+  api "com.github.tommyettinger:anim8-gdx:$anim8Version"
+  api "com.github.tommyettinger:digital:$digitalVersion"
+  api "com.github.tommyettinger:juniper:$juniperVersion"
+  api "com.github.tommyettinger:libgdx-utils-box2d:$utilsBox2dVersion"
+  api "com.github.tommyettinger:libgdx-utils:$utilsVersion"
+  api "com.github.tommyettinger:regexodus:$regExodusVersion"
+  api "com.github.tommyettinger:sjInGameConsole:$inGameConsoleVersion"
+  api "com.github.tommyettinger:textratypist:$textratypistVersion"
+  api "com.kotcrab.vis:vis-ui:$visUiVersion"
+  api "com.sudoplay.joise:joise:$joiseVersion"
+  api "de.golfgl.gdxcontrollerutils:gdx-controllers-advanced:$controllerUtilsVersion"
+  api "de.golfgl.gdxcontrollerutils:gdx-controllerutils-mapping:$controllerMappingVersion"
+  api "de.golfgl.gdxcontrollerutils:gdx-controllerutils-scene2d:$controllerScene2DVersion"
+  api "org.apache.commons:commons-collections4:$commonsCollectionsVersion"
+  api "space.earlygrey:shapedrawer:$shapeDrawerVersion"
+
+  if(enableGraalNative == 'true') {
+    implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"
+  }
+}
