@@ -5,20 +5,33 @@ import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.utils.Align;
+import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import me.sashie.gravitis.entities.BreakableEntity;
+import me.sashie.gravitis.entities.FuelCrystal;
 
 import java.util.ArrayList;
-import java.util.List;
 
 public class GameScreen implements Screen {
     private Gravitis game;
+    private SpriteBatch batch;
+    private Stage hudStage;
+    private Label fuelLabel;
+    private Label toolLabel;
+
     private ShapeRenderer shapeRenderer;
     private OrthographicCamera camera;
 
     private ParallaxBackground parallaxBackground;
-    private BreakableObject breakableObject;
-    private List<Laser> lasers = new ArrayList<>();
+    private BreakableEntity breakableEntity;
+
     private Player player;
     private Planet planet;
     private ArrayList<AI> aiCircles;
@@ -28,6 +41,7 @@ public class GameScreen implements Screen {
     public GameScreen(Gravitis game) {
         this.game = game;
         shapeRenderer = new ShapeRenderer();
+        batch = new SpriteBatch();
 
         // Initialize camera
         camera = new OrthographicCamera();
@@ -38,13 +52,60 @@ public class GameScreen implements Screen {
         // Initialize game objects
         planet = new Planet(new Vector2(Gdx.graphics.getWidth() / 2f, Gdx.graphics.getHeight() / 2f), 50f);
         player = new Player(new Vector2(200, 200), 20);
-        breakableObject = new BreakableObject(new Vector2(500, 500), 50f);
+        breakableEntity = new FuelCrystal(new Vector2(500, 500), 50f);
         aiCircles = new ArrayList<>();
 
         for (int i = 0; i < 100; i++) {
             float randomRadius = 3 + (float) Math.random() * 17; // Random size between 3 and 20
             aiCircles.add(new AI(new Vector2((float) Math.random() * 800, (float) Math.random() * 600), randomRadius));
         }
+        setupHUD();
+    }
+
+    private void setupHUD() {
+        // Create a stage for the HUD
+        hudStage = new Stage(new ScreenViewport());
+
+        // Create font and style for labels
+        BitmapFont font = new BitmapFont(); // Use a custom font file if needed
+        Label.LabelStyle labelStyle = new Label.LabelStyle(font, com.badlogic.gdx.graphics.Color.WHITE);
+
+        // Create labels
+        fuelLabel = new Label("Fuel: " + (int) player.getFuel(), labelStyle);
+        toolLabel = new Label("Tool: " + player.getSelectedTool().name(), labelStyle);
+
+        // Create a table for layout
+        Table table = new Table();
+        table.top().left(); // Position the table at the top-left of the screen
+        table.setFillParent(true);
+
+        // Add labels to the table
+        table.add(fuelLabel).align(Align.left).pad(10);
+        table.row();
+        table.add(toolLabel).align(Align.left).pad(10);
+
+        // Add the table to the stage
+        hudStage.addActor(table);
+    }
+
+
+    public void updateHUD(float delta, Player player) {
+        // Update fuel and tool information
+        player.setFuel(Math.max(0, player.getFuel() - delta * 0.5f)); // Fuel decreasing
+        fuelLabel.setText("Fuel: " + (int) player.getFuel());
+        toolLabel.setText("Tool: " + player.getSelectedTool().name());
+    }
+
+    public void renderHUD() {
+        // Render the HUD
+        batch.begin();
+        hudStage.act();
+        hudStage.draw();
+        batch.end();
+    }
+
+    public Stage getHudStage() {
+        return hudStage;
     }
 
     @Override
@@ -54,38 +115,37 @@ public class GameScreen implements Screen {
 
         // Update game logic
         update(delta);
+        updateHUD(delta, player);
 
         // Draw everything
         camera.update();
         shapeRenderer.setProjectionMatrix(camera.combined);
-
 
         // Pass the camera position to the background
         Vector2 cameraPosition = new Vector2(camera.position.x, camera.position.y);
         parallaxBackground.render(shapeRenderer, cameraPosition);
 
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
-
         planet.render(shapeRenderer);
-        player.render(shapeRenderer);
-        breakableObject.render(shapeRenderer, player);
-
-        // Render lasers
-        for (Laser laser : lasers) {
-            laser.render(shapeRenderer);
-        }
         for (AI ai : aiCircles) {
             ai.render(shapeRenderer);
         }
         shapeRenderer.end();
 
+        breakableEntity.render(shapeRenderer, player);
+        player.render(shapeRenderer);
+
+        batch.setProjectionMatrix(camera.combined);
+
+        renderHUD();
+    }
+
+    private void update(float delta) {
         // ESC key to pause the game
         if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
             game.pauseGame();
         }
-    }
 
-    private void update(float delta) {
         if (Gdx.input.isKeyJustPressed(Input.Keys.T)) {
             toggleCameraMode();
         }
@@ -100,26 +160,10 @@ public class GameScreen implements Screen {
             camera.zoom = 6;
         }
 
-        player.update(delta, planet, breakableObject, camera);
-
-        Laser laser = player.shootLaser(camera);
-        if (laser != null) {
-            lasers.add(laser);
-        }
-
-        for (int i = 0; i < lasers.size(); i++) {
-            Laser l = lasers.get(i);
-            l.update();
-
-            // Check for collision with the breakable object
-            if (l.checkCollision(breakableObject)) {
-                breakableObject.hitByLaser();
-                lasers.remove(l);
-            }
-        }
+        player.update(delta, planet, breakableEntity, camera);
 
         // Update the breakable object (update pieces if broken)
-        breakableObject.update(player);
+        breakableEntity.update(player);
 
         for (AI ai : aiCircles) {
             ai.update(delta, player, aiCircles, planet);

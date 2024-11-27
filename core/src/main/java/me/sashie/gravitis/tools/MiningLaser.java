@@ -1,36 +1,39 @@
-package me.sashie.gravitis;
+package me.sashie.gravitis.tools;
 
-import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import me.sashie.gravitis.entities.BreakableEntity;
 
-public class Laser {
+public class MiningLaser implements Tool {
     private Vector2 position;
     private Vector2 direction;
     private Vector2 startPosition; // Store the initial position of the laser
-    private float speed = 1.2f;
+    private float speed = 1.1f;
     private float length = 20f;
     private float lineWidth = 5f; // Line width for the laser beam
     private float maxDistance = 80f; // Maximum distance the laser can travel
     private boolean active = true; // Determines if the laser is still active
 
-    public Laser(Vector2 startPosition, Vector2 direction) {
+    public MiningLaser(Vector2 startPosition, Vector2 direction) {
         this.position = startPosition.cpy();
         this.startPosition = startPosition.cpy(); // Save the starting position
         this.direction = direction.nor(); // Normalize direction to ensure consistent movement
 
     }
 
+    @Override
     public Vector2 getPosition() {
         return position;
     }
 
+    @Override
     public boolean isActive() {
         return active;
     }
 
-    public boolean checkCollision(BreakableObject obj) {
+    @Override
+    public boolean checkCollision(BreakableEntity obj) {
         if (!active) return false;
 
         // Line segment endpoints
@@ -56,6 +59,7 @@ public class Laser {
         return closestPoint.dst2(circleCenter) <= circleRadius * circleRadius;
     }
 
+    @Override
     public void update() {
         if (!active) return; // Skip updating if the laser is inactive
 
@@ -68,14 +72,16 @@ public class Laser {
         }
     }
 
+    @Override
     public void render(ShapeRenderer shapeRenderer) {
         if (!active) return; // Skip rendering if the laser is inactive
-
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(Color.GREEN);
         shapeRenderer.rectLine(position.x, position.y, position.x + direction.x * length, position.y + direction.y * length, lineWidth); // Set the line width to make the laser thicker
-
+        shapeRenderer.end();
     }
 
+    @Override
     public void setMaxRange(float maxDistance) {
         this.maxDistance = maxDistance;
     }
