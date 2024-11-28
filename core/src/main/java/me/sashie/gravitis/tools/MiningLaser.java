@@ -3,7 +3,9 @@ package me.sashie.gravitis.tools;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import me.sashie.gravitis.Player;
 import me.sashie.gravitis.entities.BreakableEntity;
+import me.sashie.gravitis.entities.Entity;
 
 public class MiningLaser implements Tool {
     private Vector2 position;
@@ -33,8 +35,8 @@ public class MiningLaser implements Tool {
     }
 
     @Override
-    public boolean checkCollision(BreakableEntity obj) {
-        if (!active) return false;
+    public boolean checkCollision(Entity obj, Player player) {
+        if (!obj.isAlive() || !active) return false;
 
         // Line segment endpoints
         Vector2 laserStart = position.cpy();
@@ -60,7 +62,7 @@ public class MiningLaser implements Tool {
     }
 
     @Override
-    public void update() {
+    public void update(Entity obj, Player player) {
         if (!active) return; // Skip updating if the laser is inactive
 
         // Move the laser in the direction with the defined speed
@@ -73,7 +75,7 @@ public class MiningLaser implements Tool {
     }
 
     @Override
-    public void render(ShapeRenderer shapeRenderer) {
+    public void render(ShapeRenderer shapeRenderer, Player player) {
         if (!active) return; // Skip rendering if the laser is inactive
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(Color.GREEN);

@@ -2,7 +2,9 @@ package me.sashie.gravitis.tools;
 
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
+import me.sashie.gravitis.Player;
 import me.sashie.gravitis.entities.BreakableEntity;
+import me.sashie.gravitis.entities.Entity;
 
 public class PulseWave implements Tool {
     private Vector2 position;      // Center of the pulse wave (player's position)
@@ -15,7 +17,6 @@ public class PulseWave implements Tool {
         this.position = startPosition.cpy();
         this.radius = 0f; // Start from zero and grow outward
         this.maxRadius = maxRadius;
-        this.expansionSpeed = expansionSpeed;
     }
 
     @Override
@@ -28,7 +29,7 @@ public class PulseWave implements Tool {
     }
 
     @Override
-    public void update() {
+    public void update(Entity obj, Player player) {
         if (!active) return;
 
         // Expand the wave
@@ -40,15 +41,15 @@ public class PulseWave implements Tool {
         }
     }
 
-    public boolean checkCollision(BreakableEntity obj) {
-        if (!active) return false;
+    public boolean checkCollision(Entity obj, Player player) {
+        if (!obj.isAlive() || !active) return false;
 
         // Check if the object's position is within the wave's radius
         float distanceToObject = obj.getPosition().dst(position);
         return distanceToObject <= radius + obj.getRadius();
     }
 
-    public void render(ShapeRenderer shapeRenderer) {
+    public void render(ShapeRenderer shapeRenderer, Player player) {
         if (!active) return;
         shapeRenderer.begin(ShapeRenderer.ShapeType.Line);
 

@@ -5,14 +5,11 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import me.sashie.gravitis.Player;
 import me.sashie.gravitis.entities.pieces.Piece;
-import me.sashie.gravitis.tools.MiningLaser;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class BreakableEntity {
-    private Vector2 position;
-    private float radius;
+public abstract class BreakableEntity extends Entity {
     private List<Piece> pieces;
 
     public abstract Color getColor();
@@ -21,21 +18,18 @@ public abstract class BreakableEntity {
     public abstract void renderShape(ShapeRenderer shapeRenderer);
 
     public BreakableEntity(Vector2 position, float radius) {
+        super(position, radius);
         this.position = position;
         this.radius = radius;
         this.pieces = new ArrayList<>();
     }
 
-    public Vector2 getPosition() {
-        return position;
-    }
-
-    public float getRadius() {
-        return radius;
-    }
-
-    public boolean isAlive() {
+    /*public boolean isAlive() {
         return this.radius > 10f;
+    }*/
+
+    public List<Piece> getPieces() {
+        return pieces;
     }
 
     public void render(ShapeRenderer shapeRenderer, Player player) {
@@ -59,6 +53,7 @@ public abstract class BreakableEntity {
         for (int i = 0; i < pieces.size(); i++) {
             Piece piece = pieces.get(i);
             piece.update(player);
+
             if (piece.getPosition().dst(player.getPosition()) < 30f) {
                 onPickup(piece, player);
                 pieces.remove(piece);
@@ -68,7 +63,7 @@ public abstract class BreakableEntity {
         //pieces.removeIf(p -> p.getPosition().dst(player.getPosition()) < 30f);
     }
 
-    public void hitByLaser() {
+    public void onHit() {
         // Break the object into pieces when hit by a laser
         //pieces.clear(); // Clear previous pieces
         for (int i = 0; i < 2; i++) {
@@ -81,11 +76,6 @@ public abstract class BreakableEntity {
             }
             pieces.add(piece);
         }
-    }
-
-    public boolean isHitByLaser(MiningLaser laser) {
-        // Check if the laser hits the object
-        return laser.checkCollision(this); // laser.getPosition().dst(position) < radius;
     }
 
 }

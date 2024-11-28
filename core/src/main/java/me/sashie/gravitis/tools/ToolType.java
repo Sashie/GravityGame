@@ -6,6 +6,6 @@ public enum ToolType {
     MINING_VACUUM,
     DEFENCE_DRONES,
     ATTACK_CANNON,
-    ATTACK_PULSE
+    ATTACK_PULSE;
 
 }

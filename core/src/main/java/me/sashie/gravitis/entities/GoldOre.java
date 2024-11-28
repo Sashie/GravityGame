@@ -30,7 +30,9 @@ public class GoldOre extends BreakableEntity {
 
     @Override
     public void renderShape(ShapeRenderer shapeRenderer) {
+        shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.circle(getPosition().x, getPosition().y, getRadius());
+        shapeRenderer.end();
     }
 
 }

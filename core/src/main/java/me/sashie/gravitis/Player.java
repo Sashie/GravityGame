@@ -9,10 +9,8 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import me.sashie.gravitis.entities.BreakableEntity;
-import me.sashie.gravitis.tools.MiningLaser;
-import me.sashie.gravitis.tools.Tool;
-import me.sashie.gravitis.tools.PulseWave;
-import me.sashie.gravitis.tools.ToolType;
+import me.sashie.gravitis.entities.Entity;
+import me.sashie.gravitis.tools.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -24,7 +22,7 @@ public class Player {
     private float radius;
     private boolean absorbed;
     private boolean isShooting;
-    private List<Tool> lasers = new ArrayList<>();
+    private List<Tool> activeToolEntities = new ArrayList<>();
     private ToolType selectedTool;
     private final List<ToolType> toolTypes = Arrays.asList(ToolType.values());
     private float fuel = 500;
@@ -47,7 +45,7 @@ public class Player {
         return absorbed;
     }
 
-    public void update(float delta, Planet orbitingPlanet, BreakableEntity breakableObject, Camera camera) {
+    public void update(float delta, Planet orbitingPlanet, List<Entity> entities, Camera camera) {
         Vector2 inputDirection = null;
         float inputStrength = 0;
 
@@ -77,20 +75,23 @@ public class Player {
             }
         });
 
-        Tool laser = shootLaser(camera);
-        if (laser != null) {
-            lasers.add(laser);
+        Tool tool = useTool(camera);
+        if (tool != null) {
+            activeToolEntities.add(tool);
         }
 
-        for (int i = 0; i < lasers.size(); i++) {
-            Tool l = lasers.get(i);
-            l.update();
+        for (int i = 0; i < activeToolEntities.size(); i++) {
+            tool = activeToolEntities.get(i);
+            for (Entity entity : entities) {
+                tool.update(entity, this);
 
-            // Check for collision with the breakable object
-            if (breakableObject.isAlive() && l.checkCollision(breakableObject)) {
-                breakableObject.hitByLaser();
-                lasers.remove(l);
+                // Check for collision with the breakable object
+                if (tool.checkCollision(entity, this)) {
+                    entity.onHit();
+                    activeToolEntities.remove(tool);
+                }
             }
+
         }
 
         Vector2 toPlanet = orbitingPlanet.getPosition().cpy().sub(position);
@@ -101,13 +102,19 @@ public class Player {
             velocity.add(toPlanet.nor().scl(0.1f)); // Gravitational pull strength
         }
 
-        Vector2 toPl = breakableObject.getPosition().cpy().sub(position);
-        float distanceTo = toPl.len();
+        for (Entity entity : entities) {
+            if (entity.isAlive()) {
+                Vector2 toPl = entity.getPosition().cpy().sub(position);
+                float distanceTo = toPl.len();
 
-        // Apply gravitational pull if within range
-        if (distanceTo < breakableObject.getRadius() * 100) {
-            velocity.add(toPl.nor().scl(0.1f)); // Gravitational pull strength
+                // Apply gravitational pull if within range
+                if (distanceTo < entity.getRadius() * 100) {
+                    velocity.add(toPl.nor().scl(0.1f)); // Gravitational pull strength
+                }
+            }
         }
+
+
 
         // Apply player input to movement
         if (inputDirection != null) {
@@ -122,10 +129,8 @@ public class Player {
     }
 
     public void render(ShapeRenderer shapeRenderer) {
-        // Render lasers
-
-        for (Tool laser : lasers) {
-            laser.render(shapeRenderer);
+        for (Tool tool : activeToolEntities) {
+            tool.render(shapeRenderer, this);
         }
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(Color.GREEN);
@@ -133,7 +138,7 @@ public class Player {
         shapeRenderer.end();
     }
 
-    public Tool shootLaser(Camera camera) {
+    public Tool useTool(Camera camera) {
         if (isShooting) {
             Vector2 touchPosition = new Vector2(Gdx.input.getX(), Gdx.input.getY());
             Vector3 unprojected = camera.unproject(new Vector3(touchPosition.x, touchPosition.y, 0));
@@ -141,10 +146,10 @@ public class Player {
 
             Vector2 inputDirection = worldTouchPosition.cpy().sub(getPosition());
 
-            switch (getSelectedTool()) {
+            switch (getSelectedToolType()) {
                 case MINING_LASER -> {return new MiningLaser(position.cpy(), inputDirection);}
                 case MINING_VACUUM -> {
-                    //
+                    return new MiningVacuum(position.cpy(), inputDirection);
                 }
                 case DEFENCE_DRONES -> {
                     //
@@ -152,13 +157,13 @@ public class Player {
                 case ATTACK_CANNON -> {
                     //
                 }
-                case ATTACK_PULSE -> {return new PulseWave(position.cpy(), inputDirection.len());}
+                case ATTACK_PULSE -> {return new PulseWave(position.cpy(), 20);}
             }
         }
-        return null; // No laser if not shooting
+        return null; // No tool if not shooting
     }
 
-    public ToolType getSelectedTool() {
+    public ToolType getSelectedToolType() {
         return selectedTool;
     }
 

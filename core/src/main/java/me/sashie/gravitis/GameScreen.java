@@ -15,9 +15,13 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
 import me.sashie.gravitis.entities.BreakableEntity;
+import me.sashie.gravitis.entities.Entity;
 import me.sashie.gravitis.entities.FuelCrystal;
+import me.sashie.gravitis.entities.GoldOre;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 public class GameScreen implements Screen {
     private Gravitis game;
@@ -30,7 +34,8 @@ public class GameScreen implements Screen {
     private OrthographicCamera camera;
 
     private ParallaxBackground parallaxBackground;
-    private BreakableEntity breakableEntity;
+    private List<Entity> entities;
+    private Random random;
 
     private Player player;
     private Planet planet;
@@ -52,7 +57,12 @@ public class GameScreen implements Screen {
         // Initialize game objects
         planet = new Planet(new Vector2(Gdx.graphics.getWidth() / 2f, Gdx.graphics.getHeight() / 2f), 50f);
         player = new Player(new Vector2(200, 200), 20);
-        breakableEntity = new FuelCrystal(new Vector2(500, 500), 50f);
+        //breakableEntity = new FuelCrystal(new Vector2(500, 500), 50f);
+        float worldWidth = 5000f; // Example world size
+        float worldHeight = 5000f;
+
+        generateEntities(50, 30, worldWidth, worldHeight);
+
         aiCircles = new ArrayList<>();
 
         for (int i = 0; i < 100; i++) {
@@ -60,6 +70,39 @@ public class GameScreen implements Screen {
             aiCircles.add(new AI(new Vector2((float) Math.random() * 800, (float) Math.random() * 600), randomRadius));
         }
         setupHUD();
+    }
+
+    private void generateEntities(int numFuelCrystals, int numGoldOres, float worldWidth, float worldHeight) {
+        entities = new ArrayList<>();
+        random = new Random();
+
+        for (int i = 0; i < numFuelCrystals; i++) {
+            spawnEntity(new FuelCrystal(randomPosition(worldWidth, worldHeight), randomRadius()));
+        }
+
+        for (int i = 0; i < numGoldOres; i++) {
+            spawnEntity(new GoldOre(randomPosition(worldWidth, worldHeight), randomRadius()));
+        }
+    }
+
+    private void spawnEntity(Entity newEntity) {
+        for (Entity existing : entities) {
+            float distance = existing.getPosition().dst(newEntity.getPosition());
+            if (distance < existing.getRadius() + newEntity.getRadius() + 10f) { // Ensure a small gap
+                // If overlap, retry
+                spawnEntity(newEntity);
+                return;
+            }
+        }
+        entities.add(newEntity); // No overlap, add to the list
+    }
+
+    private Vector2 randomPosition(float width, float height) {
+        return new Vector2(random.nextFloat() * width, random.nextFloat() * height);
+    }
+
+    private float randomRadius() {
+        return 10f + random.nextFloat() * 20f; // Radius between 10 and 30
     }
 
     private void setupHUD() {
@@ -72,7 +115,7 @@ public class GameScreen implements Screen {
 
         // Create labels
         fuelLabel = new Label("Fuel: " + (int) player.getFuel(), labelStyle);
-        toolLabel = new Label("Tool: " + player.getSelectedTool().name(), labelStyle);
+        toolLabel = new Label("Tool: " + player.getSelectedToolType().name(), labelStyle);
 
         // Create a table for layout
         Table table = new Table();
@@ -93,7 +136,7 @@ public class GameScreen implements Screen {
         // Update fuel and tool information
         player.setFuel(Math.max(0, player.getFuel() - delta * 0.5f)); // Fuel decreasing
         fuelLabel.setText("Fuel: " + (int) player.getFuel());
-        toolLabel.setText("Tool: " + player.getSelectedTool().name());
+        toolLabel.setText("Tool: " + player.getSelectedToolType().name());
     }
 
     public void renderHUD() {
@@ -132,7 +175,10 @@ public class GameScreen implements Screen {
         }
         shapeRenderer.end();
 
-        breakableEntity.render(shapeRenderer, player);
+        for (Entity entity : entities) {
+            entity.render(shapeRenderer, player);
+        }
+
         player.render(shapeRenderer);
 
         batch.setProjectionMatrix(camera.combined);
@@ -160,10 +206,11 @@ public class GameScreen implements Screen {
             camera.zoom = 6;
         }
 
-        player.update(delta, planet, breakableEntity, camera);
+        player.update(delta, planet, entities, camera);
 
-        // Update the breakable object (update pieces if broken)
-        breakableEntity.update(player);
+        for (Entity entity : entities) {
+            entity.update(player);
+        }
 
         for (AI ai : aiCircles) {
             ai.update(delta, player, aiCircles, planet);
