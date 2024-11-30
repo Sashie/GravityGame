@@ -8,6 +8,9 @@ import me.sashie.gravitis.entities.BreakableEntity;
 import me.sashie.gravitis.entities.Entity;
 import me.sashie.gravitis.entities.pieces.Piece;
 
+import java.util.Collection;
+import java.util.List;
+
 
 public class MiningVacuum implements Tool {
 
@@ -58,15 +61,19 @@ public class MiningVacuum implements Tool {
     }
 
     @Override
-    public void update(Entity obj, Player player) {
-        if (!(obj instanceof BreakableEntity) || !active) return;
-        BreakableEntity breakable = (BreakableEntity) obj;
-        for (int i = 0; i < breakable.getPieces().size(); i++) {
-            Piece piece = breakable.getPieces().get(i);
-            float distance = piece.getPosition().dst(player.getPosition());
-            if (distance < vacuumRadius) {
-                Vector2 pullDirection = player.getPosition().cpy().sub(piece.getPosition()).nor();
-                piece.getPosition().add(pullDirection.scl(vacuumStrength));
+    public void update(Collection<List<Entity>> chunkEntities, Player player) {
+        for (List<Entity> entities : chunkEntities) {
+            for (Entity entity : entities) {
+                if (!(entity instanceof BreakableEntity) || !active) return;
+                BreakableEntity breakable = (BreakableEntity) entity;
+                for (int i = 0; i < breakable.getPieces().size(); i++) {
+                    Piece piece = breakable.getPieces().get(i);
+                    float distance = piece.getPosition().dst(player.getPosition());
+                    if (distance < vacuumRadius) {
+                        Vector2 pullDirection = player.getPosition().cpy().sub(piece.getPosition()).nor();
+                        piece.getPosition().add(pullDirection.scl(vacuumStrength));
+                    }
+                }
             }
         }
 

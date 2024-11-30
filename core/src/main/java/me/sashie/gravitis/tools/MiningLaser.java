@@ -4,8 +4,10 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import me.sashie.gravitis.Player;
-import me.sashie.gravitis.entities.BreakableEntity;
 import me.sashie.gravitis.entities.Entity;
+
+import java.util.Collection;
+import java.util.List;
 
 public class MiningLaser implements Tool {
     private Vector2 position;
@@ -62,7 +64,7 @@ public class MiningLaser implements Tool {
     }
 
     @Override
-    public void update(Entity obj, Player player) {
+    public void update(Collection<List<Entity>> chunkEntities, Player player) {
         if (!active) return; // Skip updating if the laser is inactive
 
         // Move the laser in the direction with the defined speed

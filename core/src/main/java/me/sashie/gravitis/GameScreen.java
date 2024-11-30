@@ -14,14 +14,13 @@ import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
-import me.sashie.gravitis.entities.BreakableEntity;
+import com.sudoplay.joise.module.ModuleBasisFunction;
+import com.sudoplay.joise.module.ModuleFractal;
 import me.sashie.gravitis.entities.Entity;
 import me.sashie.gravitis.entities.FuelCrystal;
 import me.sashie.gravitis.entities.GoldOre;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 public class GameScreen implements Screen {
     private Gravitis game;
@@ -34,8 +33,11 @@ public class GameScreen implements Screen {
     private OrthographicCamera camera;
 
     private ParallaxBackground parallaxBackground;
-    private List<Entity> entities;
+    private ModuleFractal noiseGenerator;
+    private Map<Vector2, List<Entity>> chunkEntities = new HashMap<>();
     private Random random;
+    private static final float CHUNK_SIZE = 1000f; // Size of one chunk
+    private static final int MAX_ENTITIES_PER_CHUNK = 10; // Limit for entities per chunk
 
     private Player player;
     private Planet planet;
@@ -54,14 +56,13 @@ public class GameScreen implements Screen {
 
         parallaxBackground = new ParallaxBackground();
 
+        //entities = new ArrayList<>();
+        random = new Random();
+        setupNoise();
+
         // Initialize game objects
         planet = new Planet(new Vector2(Gdx.graphics.getWidth() / 2f, Gdx.graphics.getHeight() / 2f), 50f);
         player = new Player(new Vector2(200, 200), 20);
-        //breakableEntity = new FuelCrystal(new Vector2(500, 500), 50f);
-        float worldWidth = 5000f; // Example world size
-        float worldHeight = 5000f;
-
-        generateEntities(50, 30, worldWidth, worldHeight);
 
         aiCircles = new ArrayList<>();
 
@@ -72,33 +73,72 @@ public class GameScreen implements Screen {
         setupHUD();
     }
 
-    private void generateEntities(int numFuelCrystals, int numGoldOres, float worldWidth, float worldHeight) {
-        entities = new ArrayList<>();
-        random = new Random();
-
-        for (int i = 0; i < numFuelCrystals; i++) {
-            spawnEntity(new FuelCrystal(randomPosition(worldWidth, worldHeight), randomRadius()));
-        }
-
-        for (int i = 0; i < numGoldOres; i++) {
-            spawnEntity(new GoldOre(randomPosition(worldWidth, worldHeight), randomRadius()));
-        }
+    private void setupNoise() {
+        noiseGenerator = new ModuleFractal(ModuleFractal.FractalType.FBM, ModuleBasisFunction.BasisType.SIMPLEX, ModuleBasisFunction.InterpolationType.QUINTIC);
+        noiseGenerator.setNumOctaves(4); // Number of layers of noise
+        noiseGenerator.setFrequency(0.01); // Frequency of the noise
+        noiseGenerator.setSeed(42); // Fixed seed for reproducibility
     }
 
-    private void spawnEntity(Entity newEntity) {
-        for (Entity existing : entities) {
-            float distance = existing.getPosition().dst(newEntity.getPosition());
-            if (distance < existing.getRadius() + newEntity.getRadius() + 10f) { // Ensure a small gap
-                // If overlap, retry
-                spawnEntity(newEntity);
-                return;
+    private void generateEntitiesForChunk(Vector2 chunkCoords) {
+        if (chunkEntities.containsKey(chunkCoords)) return; // Avoid regenerating existing chunks
+
+        List<Entity> entitiesInChunk = new ArrayList<>();
+
+        float chunkStartX = chunkCoords.x * CHUNK_SIZE;
+        float chunkStartY = chunkCoords.y * CHUNK_SIZE;
+
+        for (int i = 0; i < MAX_ENTITIES_PER_CHUNK; i++) {
+            // Use noise for procedural placement within the chunk
+            float localX = chunkStartX + random.nextFloat() * CHUNK_SIZE;
+            float localY = chunkStartY + random.nextFloat() * CHUNK_SIZE;
+            double noiseValue = noiseGenerator.get(localX, localY);
+
+            if (noiseValue > 0.3) { // Threshold for spawning entities
+                Entity entity;
+
+                if (random.nextFloat() < 0.5) {
+                    entity = new FuelCrystal(new Vector2(localX, localY), randomRadius());
+                } else {
+                    entity = new GoldOre(new Vector2(localX, localY), randomRadius());
+                }
+
+                // Check for overlaps with existing entities in this chunk
+                if (isNonOverlapping(entity, entitiesInChunk)) {
+                    entitiesInChunk.add(entity);
+                }
             }
         }
-        entities.add(newEntity); // No overlap, add to the list
+
+        chunkEntities.put(chunkCoords, entitiesInChunk);
     }
 
-    private Vector2 randomPosition(float width, float height) {
-        return new Vector2(random.nextFloat() * width, random.nextFloat() * height);
+    private boolean isNonOverlapping(Entity newEntity, List<Entity> entities) {
+        for (Entity existing : entities) {
+            if (existing.getPosition().dst(newEntity.getPosition()) < existing.getRadius() + newEntity.getRadius() + 10f) {
+                return false; // Overlap detected
+            }
+        }
+        return true;
+    }
+
+    private Vector2 getChunkCoords(Vector2 position) {
+        return new Vector2(
+            (float) Math.floor(position.x / CHUNK_SIZE),
+            (float) Math.floor(position.y / CHUNK_SIZE)
+        );
+    }
+
+    private void loadNearbyChunks(Vector2 playerPosition) {
+        Vector2 currentChunk = getChunkCoords(playerPosition);
+
+        // Load current chunk and adjacent chunks
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                Vector2 neighborChunk = new Vector2(currentChunk.x + dx, currentChunk.y + dy);
+                generateEntitiesForChunk(neighborChunk);
+            }
+        }
     }
 
     private float randomRadius() {
@@ -131,7 +171,6 @@ public class GameScreen implements Screen {
         hudStage.addActor(table);
     }
 
-
     public void updateHUD(float delta, Player player) {
         // Update fuel and tool information
         player.setFuel(Math.max(0, player.getFuel() - delta * 0.5f)); // Fuel decreasing
@@ -149,6 +188,23 @@ public class GameScreen implements Screen {
 
     public Stage getHudStage() {
         return hudStage;
+    }
+
+    private void renderEntities(Player player) {
+        Vector2 currentChunk = getChunkCoords(player.getPosition());
+
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                Vector2 neighborChunk = new Vector2(currentChunk.x + dx, currentChunk.y + dy);
+                List<Entity> entities = chunkEntities.get(neighborChunk);
+                if (entities != null) {
+                    for (Entity entity : entities) {
+                        entity.render(shapeRenderer, player);
+                        //entity.update(player);
+                    }
+                }
+            }
+        }
     }
 
     @Override
@@ -175,9 +231,7 @@ public class GameScreen implements Screen {
         }
         shapeRenderer.end();
 
-        for (Entity entity : entities) {
-            entity.render(shapeRenderer, player);
-        }
+        renderEntities(player);
 
         player.render(shapeRenderer);
 
@@ -206,10 +260,14 @@ public class GameScreen implements Screen {
             camera.zoom = 6;
         }
 
-        player.update(delta, planet, entities, camera);
+        player.update(delta, planet, chunkEntities.values(), camera);
 
-        for (Entity entity : entities) {
-            entity.update(player);
+        loadNearbyChunks(player.getPosition());
+
+        for (List<Entity> entities : chunkEntities.values()) {
+            for (Entity entity : entities) {
+                entity.update(player);
+            }
         }
 
         for (AI ai : aiCircles) {
@@ -249,6 +307,7 @@ public class GameScreen implements Screen {
     @Override
     public void hide() {
         shapeRenderer.dispose();
+        //hudStage.dispose();
     }
 
     @Override

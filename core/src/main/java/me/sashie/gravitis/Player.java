@@ -8,12 +8,12 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
-import me.sashie.gravitis.entities.BreakableEntity;
 import me.sashie.gravitis.entities.Entity;
 import me.sashie.gravitis.tools.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 public class Player {
@@ -45,7 +45,7 @@ public class Player {
         return absorbed;
     }
 
-    public void update(float delta, Planet orbitingPlanet, List<Entity> entities, Camera camera) {
+    public void update(float delta, Planet orbitingPlanet, Collection<List<Entity>> chunkEntities, Camera camera) {
         Vector2 inputDirection = null;
         float inputStrength = 0;
 
@@ -82,16 +82,16 @@ public class Player {
 
         for (int i = 0; i < activeToolEntities.size(); i++) {
             tool = activeToolEntities.get(i);
-            for (Entity entity : entities) {
-                tool.update(entity, this);
-
-                // Check for collision with the breakable object
-                if (tool.checkCollision(entity, this)) {
-                    entity.onHit();
-                    activeToolEntities.remove(tool);
+            tool.update(chunkEntities, this);
+            for (List<Entity> entities : chunkEntities) {
+                for (Entity entity : entities) {
+                    // Check for collision with the breakable object
+                    if (tool.checkCollision(entity, this)) {
+                        entity.onHit();
+                        activeToolEntities.remove(tool);
+                    }
                 }
             }
-
         }
 
         Vector2 toPlanet = orbitingPlanet.getPosition().cpy().sub(position);
@@ -102,7 +102,7 @@ public class Player {
             velocity.add(toPlanet.nor().scl(0.1f)); // Gravitational pull strength
         }
 
-        for (Entity entity : entities) {
+        /*for (Entity entity : entities) {
             if (entity.isAlive()) {
                 Vector2 toPl = entity.getPosition().cpy().sub(position);
                 float distanceTo = toPl.len();
@@ -112,9 +112,7 @@ public class Player {
                     velocity.add(toPl.nor().scl(0.1f)); // Gravitational pull strength
                 }
             }
-        }
-
-
+        }*/
 
         // Apply player input to movement
         if (inputDirection != null) {
@@ -157,7 +155,7 @@ public class Player {
                 case ATTACK_CANNON -> {
                     //
                 }
-                case ATTACK_PULSE -> {return new PulseWave(position.cpy(), 20);}
+                case ATTACK_PULSE -> {return new PulseWave(position.cpy(), 100);}
             }
         }
         return null; // No tool if not shooting

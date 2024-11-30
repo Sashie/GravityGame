@@ -3,8 +3,10 @@ package me.sashie.gravitis.tools;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import me.sashie.gravitis.Player;
-import me.sashie.gravitis.entities.BreakableEntity;
 import me.sashie.gravitis.entities.Entity;
+
+import java.util.Collection;
+import java.util.List;
 
 public class PulseWave implements Tool {
     private Vector2 position;      // Center of the pulse wave (player's position)
@@ -29,7 +31,7 @@ public class PulseWave implements Tool {
     }
 
     @Override
-    public void update(Entity obj, Player player) {
+    public void update(Collection<List<Entity>> chunkEntities, Player player) {
         if (!active) return;
 
         // Expand the wave
