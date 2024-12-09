@@ -4,53 +4,41 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import me.sashie.gravitis.Player;
+import me.sashie.gravitis.entities.ClientEntity;
 
-public abstract class Piece {
-    private Vector2 position;
+public abstract class Piece extends ClientEntity {
     private Vector2 velocity;
-    private float size;
     private Color color;
 
     public abstract boolean renderShape(ShapeRenderer shapeRenderer, Player player);
     public abstract boolean updateShape(Player player);
 
-    public Piece(Vector2 position, Color color) {
-        this.position = position.cpy();
+    public Piece(String id, Vector2 position, Color color) {
+        super(id, position, 5 + (float) Math.random() * 10);
+        this.data.position = position.cpy();
         this.color = color;
         this.velocity = new Vector2((float) Math.random() - 0.5f, (float) Math.random() - 0.5f).nor().scl(2f); // Random velocity
-        this.size = 5 + (float) Math.random() * 10; // Random size
     }
 
+    @Override
     public void render(ShapeRenderer shapeRenderer, Player player) {
-        if (position.dst(player.getPosition()) > 30f) {
+        if (isAlive(player)) {
+            shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
             if (!renderShape(shapeRenderer, player)) {
                 shapeRenderer.setColor(color);
-                shapeRenderer.circle(position.x, position.y, size);
+                shapeRenderer.circle(data.position.x, data.position.y, data.radius);
             }
+            shapeRenderer.end();
         }
     }
 
-    public void update(Player player) {
-        if (!updateShape(player)) {
-            velocity.add(player.getPosition().cpy().sub(position).nor().scl(0.1f));
-            position.add(velocity); // Move the piece based on velocity
-        }
-    }
-
-    public Vector2 getPosition() {
-        return position;
+    @Override
+    public boolean isAlive(Player player) {
+        return getPosition().dst(player.getPosition()) > 30f;
     }
 
     public void setPosition(Vector2 position) {
-        this.position = position;
-    }
-
-    public float getSize() {
-        return size;
-    }
-
-    public void setSize(float size) {
-        this.size = size;
+        this.data.position = position;
     }
 
     public Color getColor() {

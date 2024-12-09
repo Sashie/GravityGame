@@ -38,7 +38,7 @@ public class MiningLaser implements Tool {
 
     @Override
     public boolean checkCollision(Entity obj, Player player) {
-        if (!obj.isAlive() || !active) return false;
+        if (!obj.isAlive(player) || !active) return false;
 
         // Line segment endpoints
         Vector2 laserStart = position.cpy();
@@ -64,7 +64,7 @@ public class MiningLaser implements Tool {
     }
 
     @Override
-    public void update(Collection<List<Entity>> chunkEntities, Player player) {
+    public void update(List<Entity> entities, Player player) {
         if (!active) return; // Skip updating if the laser is inactive
 
         // Move the laser in the direction with the defined speed

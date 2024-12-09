@@ -21,7 +21,7 @@ public class AI {
     }
 
 
-    public void update(float delta, Player player, List<AI> aiCircles, Planet orbitingPlanet) {
+    public void update(float delta, ClientPlayer player, List<AI> aiCircles, Planet orbitingPlanet) {
         Vector2 target = null;
 
         // Gravitational pull to maintain orbit

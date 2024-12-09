@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+import me.sashie.gravitis.ClientPlayer;
 import me.sashie.gravitis.Player;
 
 import java.util.Random;
@@ -13,8 +14,8 @@ public class FilledPolygonPiece extends Piece {
     private Random random = new Random();
     int sides;
 
-    public FilledPolygonPiece(Vector2 position, Color color) {
-        super(position, color);
+    public FilledPolygonPiece(String id, Vector2 position, Color color) {
+        super(id, position, color);
         sides = 3 + random.nextInt(7);
     }
 
@@ -28,8 +29,8 @@ public class FilledPolygonPiece extends Piece {
         // Generate vertices with random radius variance
         for (int i = 0; i < sides; i++) {
             float angle = angleStep * i * MathUtils.degreesToRadians;
-            vertices[i * 2] = position.x + MathUtils.cos(angle) * getSize();
-            vertices[i * 2 + 1] = position.y + MathUtils.sin(angle) * getSize();
+            vertices[i * 2] = position.x + MathUtils.cos(angle) * getRadius();
+            vertices[i * 2 + 1] = position.y + MathUtils.sin(angle) * getRadius();
         }
 
         //shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
@@ -51,5 +52,15 @@ public class FilledPolygonPiece extends Piece {
     @Override
     public boolean updateShape(Player player) {
         return false;
+    }
+
+    @Override
+    public void onHit(Player player) {
+
+    }
+
+    @Override
+    public void onDeath(Player player) {
+
     }
 }

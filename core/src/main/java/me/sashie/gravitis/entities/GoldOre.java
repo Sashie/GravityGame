@@ -9,18 +9,13 @@ import me.sashie.gravitis.entities.pieces.Piece;
 
 public class GoldOre extends BreakableEntity {
 
-    public GoldOre(Vector2 position, float radius) {
-        super(position, radius);
+    public GoldOre(String id, Vector2 position, float radius) {
+        super(id, position, radius);
     }
 
     @Override
     public Color getColor() {
         return Color.GOLDENROD;
-    }
-
-    @Override
-    public Piece getPiece() {
-        return new CirclePiece(getPosition().cpy().add((float) Math.random() * getRadius(), (float) Math.random() * getRadius()), Color.GOLD);
     }
 
     @Override

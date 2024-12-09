@@ -6,13 +6,10 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector2;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class ParallaxBackground {
     private static final int STAR_LAYERS = 4; // Number of parallax layers
     private static final int STARS_PER_CHUNK = 100; // Stars per chunk
-    private static final float CHUNK_SIZE = 1000f; // Size of a chunk in world units
+    private static final float CHUNK_SIZE = 2000f; // Size of a chunk in world units
 
     private final ModuleFractal module; // Joise noise module for procedural generation
     private final double[] layerSpeeds; // Speed multiplier for each layer

@@ -4,6 +4,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+import me.sashie.gravitis.ClientPlayer;
 import me.sashie.gravitis.Player;
 import me.sashie.gravitis.entities.pieces.FilledPolygonPiece;
 import me.sashie.gravitis.entities.pieces.Piece;
@@ -12,12 +13,11 @@ import java.util.Random;
 
 public class FuelCrystal extends BreakableEntity {
 
-    private float[] vertices;
     private Random random = new Random();
     int sides;
 
-    public FuelCrystal(Vector2 position, float radius) {
-        super(position, radius);
+    public FuelCrystal(String id, Vector2 position, float radius) {
+        super(id, position, radius);
         sides = 3 + random.nextInt(7);
     }
 
@@ -27,13 +27,8 @@ public class FuelCrystal extends BreakableEntity {
     }
 
     @Override
-    public Piece getPiece() {
-        return new FilledPolygonPiece(getPosition().cpy().add((float) Math.random() * getRadius(), (float) Math.random() * getRadius()), Color.VIOLET);
-    }
-
-    @Override
     public void onPickup(Piece piece, Player player) {
-        player.giveFuel(piece.getSize() * 0.5f);
+        player.giveFuel(piece.getRadius() * 0.5f);
     }
 
     @Override

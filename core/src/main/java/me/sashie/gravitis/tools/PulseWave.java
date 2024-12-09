@@ -31,7 +31,7 @@ public class PulseWave implements Tool {
     }
 
     @Override
-    public void update(Collection<List<Entity>> chunkEntities, Player player) {
+    public void update(List<Entity> entities, Player player) {
         if (!active) return;
 
         // Expand the wave
@@ -44,7 +44,7 @@ public class PulseWave implements Tool {
     }
 
     public boolean checkCollision(Entity obj, Player player) {
-        if (!obj.isAlive() || !active) return false;
+        if (!obj.isAlive(player) || !active) return false;
 
         // Check if the object's position is within the wave's radius
         float distanceToObject = obj.getPosition().dst(position);

@@ -9,6 +9,7 @@ import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import me.sashie.gravitis.entities.Entity;
+import me.sashie.gravitis.network.packets.PacketInEntityHit;
 import me.sashie.gravitis.tools.*;
 
 import java.util.ArrayList;
@@ -16,29 +17,27 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 
-public class Player {
-    private final Vector2 position;
+public class ClientPlayer extends Player {
+    public Gravitis game;
     private final Vector2 velocity;
-    private float radius;
     private boolean absorbed;
     private boolean isShooting;
-    private List<Tool> activeToolEntities = new ArrayList<>();
+    private List<Tool> activeTools = new ArrayList<>();
     private ToolType selectedTool;
     private final List<ToolType> toolTypes = Arrays.asList(ToolType.values());
     private float fuel = 500;
 
-
-    public Player(Vector2 position, float radius) {
-        this.position = position;
+    public ClientPlayer(Gravitis game, Vector2 position, float radius) {
+        super(game.getUsername(), position, radius);
+        this.game = game;
         this.velocity = new Vector2(0, 0);
-        this.radius = radius;
         this.absorbed = false;
         this.isShooting = false;
         this.selectedTool = ToolType.MINING_LASER;
     }
 
-    public Vector2 getPosition() {
-        return position;
+    public Vector2 getVelocity() {
+        return velocity;
     }
 
     public boolean isAbsorbed() {
@@ -77,28 +76,33 @@ public class Player {
 
         Tool tool = useTool(camera);
         if (tool != null) {
-            activeToolEntities.add(tool);
+            activeTools.add(tool);
         }
 
-        for (int i = 0; i < activeToolEntities.size(); i++) {
-            tool = activeToolEntities.get(i);
-            tool.update(chunkEntities, this);
+        for (int i = 0; i < activeTools.size(); i++) {
+            tool = activeTools.get(i);
+            tool.update(game.entities, this);
             for (List<Entity> entities : chunkEntities) {
-                for (Entity entity : entities) {
-                    // Check for collision with the breakable object
+                for (int j = 0; j < entities.size(); j++) {
+                    Entity entity = entities.get(j);
                     if (tool.checkCollision(entity, this)) {
-                        entity.onHit();
-                        activeToolEntities.remove(tool);
+                        PacketInEntityHit hitPacket = new PacketInEntityHit();
+                        hitPacket.username = getUsername();
+                        hitPacket.entityId = entity.getId();
+                        game.getClient().sendTCP(hitPacket);
+                        activeTools.remove(tool);
+                    } else if (!tool.isActive()) {
+                        activeTools.remove(tool);
                     }
                 }
             }
         }
 
-        Vector2 toPlanet = orbitingPlanet.getPosition().cpy().sub(position);
+        Vector2 toPlanet = orbitingPlanet.getPosition().cpy().sub(getPosition());
         float distanceToPlanet = toPlanet.len();
 
         // Apply gravitational pull if within range
-        if (distanceToPlanet < orbitingPlanet.getRadius() * 100) {
+        if (distanceToPlanet < orbitingPlanet.getRadius() * 5) {
             velocity.add(toPlanet.nor().scl(0.1f)); // Gravitational pull strength
         }
 
@@ -120,19 +124,21 @@ public class Player {
         }
 
         // Apply velocity and update position
-        position.add(velocity);
+        getPosition().add(velocity);
 
         // Limit maximum speed
-        if (velocity.len() > 5) velocity.nor().scl(5);
+        if (velocity.len() > 4) velocity.nor().scl(4);
+
+        //velocity.nor().scl(1.5f);
     }
 
     public void render(ShapeRenderer shapeRenderer) {
-        for (Tool tool : activeToolEntities) {
+        for (Tool tool : activeTools) {
             tool.render(shapeRenderer, this);
         }
         shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
         shapeRenderer.setColor(Color.GREEN);
-        shapeRenderer.circle(position.x, position.y, radius);
+        shapeRenderer.circle(getPosition().x, getPosition().y, getRadius());
         shapeRenderer.end();
     }
 
@@ -145,9 +151,9 @@ public class Player {
             Vector2 inputDirection = worldTouchPosition.cpy().sub(getPosition());
 
             switch (getSelectedToolType()) {
-                case MINING_LASER -> {return new MiningLaser(position.cpy(), inputDirection);}
+                case MINING_LASER -> {return new MiningLaser(getPosition().cpy(), inputDirection);}
                 case MINING_VACUUM -> {
-                    return new MiningVacuum(position.cpy(), inputDirection);
+                    return new MiningVacuum(getPosition().cpy(), inputDirection);
                 }
                 case DEFENCE_DRONES -> {
                     //
@@ -155,7 +161,7 @@ public class Player {
                 case ATTACK_CANNON -> {
                     //
                 }
-                case ATTACK_PULSE -> {return new PulseWave(position.cpy(), 100);}
+                case ATTACK_PULSE -> {return new PulseWave(getPosition().cpy(), 100);}
             }
         }
         return null; // No tool if not shooting
@@ -169,18 +175,6 @@ public class Player {
         int currentIndex = toolTypes.indexOf(selectedTool);
         int nextIndex = (currentIndex - scrollAmount + toolTypes.size()) % toolTypes.size();
         selectedTool = toolTypes.get(nextIndex);
-    }
-
-    public void absorb(float amount) {
-        radius += amount;
-    }
-
-    public void setAbsorbed(boolean absorbed) {
-        this.absorbed = absorbed;
-    }
-
-    public float getRadius() {
-        return radius;
     }
 
     public float getFuel() {

@@ -61,8 +61,19 @@ public class MiningVacuum implements Tool {
     }
 
     @Override
-    public void update(Collection<List<Entity>> chunkEntities, Player player) {
-        for (List<Entity> entities : chunkEntities) {
+    public void update(List<Entity> entities, Player player) {
+        for (Entity entity : entities) {
+            if (!(entity instanceof Piece) || !active) return;
+            Piece piece = (Piece) entity;
+            float distance = piece.getPosition().dst(player.getPosition());
+            if (distance < vacuumRadius) {
+                Vector2 pullDirection = player.getPosition().cpy().sub(piece.getPosition()).nor();
+                piece.getPosition().add(pullDirection.scl(vacuumStrength));
+            }
+
+        }
+
+        /*for (List<Entity> entities : chunkEntities) {
             for (Entity entity : entities) {
                 if (!(entity instanceof BreakableEntity) || !active) return;
                 BreakableEntity breakable = (BreakableEntity) entity;
@@ -75,7 +86,7 @@ public class MiningVacuum implements Tool {
                     }
                 }
             }
-        }
+        }*/
 
         time += 0.01f;
 

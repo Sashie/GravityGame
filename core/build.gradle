@@ -10,14 +10,18 @@ dependencies {
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
   api "com.crashinvaders.vfx:gdx-vfx-core:$gdxVfxCoreVersion"
   api "com.crashinvaders.vfx:gdx-vfx-effects:$gdxVfxEffectsVersion"
+  api "com.esotericsoftware:kryo:$kryoVersion"
   api "com.github.crykn.guacamole:core:$guacamoleVersion"
   api "com.github.crykn.guacamole:gdx:$guacamoleVersion"
+  api "com.github.crykn:kryonet:$kryoNetVersion"
   api "com.github.payne911:PieMenu:$pieMenuVersion"
   api "com.github.raeleus.TenPatch:tenpatch:$tenPatchVersion"
   api "com.github.raeleus.stripe:stripe:$stripeVersion"
   api "com.github.tommyettinger:anim8-gdx:$anim8Version"
   api "com.github.tommyettinger:digital:$digitalVersion"
   api "com.github.tommyettinger:juniper:$juniperVersion"
+  api "com.github.tommyettinger:kryo-digital:$kryoDigitalVersion"
+  api "com.github.tommyettinger:kryo-juniper:$kryoJuniperVersion"
   api "com.github.tommyettinger:libgdx-utils-box2d:$utilsBox2dVersion"
   api "com.github.tommyettinger:libgdx-utils:$utilsVersion"
   api "com.github.tommyettinger:regexodus:$regExodusVersion"
@@ -30,6 +34,7 @@ dependencies {
   api "de.golfgl.gdxcontrollerutils:gdx-controllerutils-scene2d:$controllerScene2DVersion"
   api "org.apache.commons:commons-collections4:$commonsCollectionsVersion"
   api "space.earlygrey:shapedrawer:$shapeDrawerVersion"
+  api project(':shared')
 
   if(enableGraalNative == 'true') {
     implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"

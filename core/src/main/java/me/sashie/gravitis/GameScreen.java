@@ -9,37 +9,38 @@ import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Stage;
-import com.badlogic.gdx.scenes.scene2d.ui.Label;
-import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.*;
+import com.badlogic.gdx.scenes.scene2d.utils.ChangeListener;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.viewport.ScreenViewport;
-import com.sudoplay.joise.module.ModuleBasisFunction;
-import com.sudoplay.joise.module.ModuleFractal;
+import me.sashie.gravitis.entities.ClientEntity;
 import me.sashie.gravitis.entities.Entity;
-import me.sashie.gravitis.entities.FuelCrystal;
-import me.sashie.gravitis.entities.GoldOre;
+import me.sashie.gravitis.network.packets.PacketInPlayerMovement;
 
 import java.util.*;
+import java.util.List;
 
 public class GameScreen implements Screen {
     private Gravitis game;
+    private Skin skin;
     private SpriteBatch batch;
     private Stage hudStage;
     private Label fuelLabel;
     private Label toolLabel;
+    private Table pauseMenuTable;
+    private Table settingsTable;
+    private boolean isPaused = false;
 
     private ShapeRenderer shapeRenderer;
     private OrthographicCamera camera;
 
     private ParallaxBackground parallaxBackground;
-    private ModuleFractal noiseGenerator;
-    private Map<Vector2, List<Entity>> chunkEntities = new HashMap<>();
-    private Random random;
-    private static final float CHUNK_SIZE = 1000f; // Size of one chunk
-    private static final int MAX_ENTITIES_PER_CHUNK = 10; // Limit for entities per chunk
 
-    private Player player;
+    private static final float CHUNK_SIZE = 1000f; // Size of one chunk
+
+    private ClientPlayer player;
     private Planet planet;
     private ArrayList<AI> aiCircles;
 
@@ -47,6 +48,7 @@ public class GameScreen implements Screen {
 
     public GameScreen(Gravitis game) {
         this.game = game;
+        skin = new Skin(Gdx.files.internal("uiskin.json"));
         shapeRenderer = new ShapeRenderer();
         batch = new SpriteBatch();
 
@@ -56,13 +58,9 @@ public class GameScreen implements Screen {
 
         parallaxBackground = new ParallaxBackground();
 
-        //entities = new ArrayList<>();
-        random = new Random();
-        setupNoise();
-
         // Initialize game objects
         planet = new Planet(new Vector2(Gdx.graphics.getWidth() / 2f, Gdx.graphics.getHeight() / 2f), 50f);
-        player = new Player(new Vector2(200, 200), 20);
+        player = new ClientPlayer(game, new Vector2(200, 200), 20);
 
         aiCircles = new ArrayList<>();
 
@@ -71,78 +69,15 @@ public class GameScreen implements Screen {
             aiCircles.add(new AI(new Vector2((float) Math.random() * 800, (float) Math.random() * 600), randomRadius));
         }
         setupHUD();
-    }
-
-    private void setupNoise() {
-        noiseGenerator = new ModuleFractal(ModuleFractal.FractalType.FBM, ModuleBasisFunction.BasisType.SIMPLEX, ModuleBasisFunction.InterpolationType.QUINTIC);
-        noiseGenerator.setNumOctaves(4); // Number of layers of noise
-        noiseGenerator.setFrequency(0.01); // Frequency of the noise
-        noiseGenerator.setSeed(42); // Fixed seed for reproducibility
-    }
-
-    private void generateEntitiesForChunk(Vector2 chunkCoords) {
-        if (chunkEntities.containsKey(chunkCoords)) return; // Avoid regenerating existing chunks
-
-        List<Entity> entitiesInChunk = new ArrayList<>();
-
-        float chunkStartX = chunkCoords.x * CHUNK_SIZE;
-        float chunkStartY = chunkCoords.y * CHUNK_SIZE;
-
-        for (int i = 0; i < MAX_ENTITIES_PER_CHUNK; i++) {
-            // Use noise for procedural placement within the chunk
-            float localX = chunkStartX + random.nextFloat() * CHUNK_SIZE;
-            float localY = chunkStartY + random.nextFloat() * CHUNK_SIZE;
-            double noiseValue = noiseGenerator.get(localX, localY);
-
-            if (noiseValue > 0.3) { // Threshold for spawning entities
-                Entity entity;
-
-                if (random.nextFloat() < 0.5) {
-                    entity = new FuelCrystal(new Vector2(localX, localY), randomRadius());
-                } else {
-                    entity = new GoldOre(new Vector2(localX, localY), randomRadius());
-                }
-
-                // Check for overlaps with existing entities in this chunk
-                if (isNonOverlapping(entity, entitiesInChunk)) {
-                    entitiesInChunk.add(entity);
-                }
-            }
-        }
-
-        chunkEntities.put(chunkCoords, entitiesInChunk);
-    }
-
-    private boolean isNonOverlapping(Entity newEntity, List<Entity> entities) {
-        for (Entity existing : entities) {
-            if (existing.getPosition().dst(newEntity.getPosition()) < existing.getRadius() + newEntity.getRadius() + 10f) {
-                return false; // Overlap detected
-            }
-        }
-        return true;
+        setupPauseMenu();
+        setupSettingsMenu();
     }
 
     private Vector2 getChunkCoords(Vector2 position) {
         return new Vector2(
-            (float) Math.floor(position.x / CHUNK_SIZE),
-            (float) Math.floor(position.y / CHUNK_SIZE)
+            (int) Math.floor(position.x / CHUNK_SIZE),
+            (int) Math.floor(position.y / CHUNK_SIZE)
         );
-    }
-
-    private void loadNearbyChunks(Vector2 playerPosition) {
-        Vector2 currentChunk = getChunkCoords(playerPosition);
-
-        // Load current chunk and adjacent chunks
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dy = -1; dy <= 1; dy++) {
-                Vector2 neighborChunk = new Vector2(currentChunk.x + dx, currentChunk.y + dy);
-                generateEntitiesForChunk(neighborChunk);
-            }
-        }
-    }
-
-    private float randomRadius() {
-        return 10f + random.nextFloat() * 20f; // Radius between 10 and 30
     }
 
     private void setupHUD() {
@@ -171,11 +106,104 @@ public class GameScreen implements Screen {
         hudStage.addActor(table);
     }
 
-    public void updateHUD(float delta, Player player) {
+    private void setupPauseMenu() {
+        pauseMenuTable = new Table();
+        pauseMenuTable.setFillParent(true);
+        pauseMenuTable.setVisible(false);
+
+        TextButton resumeButton = new TextButton("Resume", skin);
+        resumeButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                togglePause();
+            }
+        });
+
+        TextButton settingsButton = new TextButton("Settings", skin);
+        settingsButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                showSettingsMenu();
+            }
+        });
+
+        TextButton quitButton = new TextButton("Quit", skin);
+        quitButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                Gdx.app.exit(); // Quit the game
+            }
+        });
+
+        pauseMenuTable.add(resumeButton).pad(10).row();
+        pauseMenuTable.add(settingsButton).pad(10).row();
+        pauseMenuTable.add(quitButton).pad(10).row();
+
+        hudStage.addActor(pauseMenuTable);
+    }
+
+    private void setupSettingsMenu() {
+        settingsTable = new Table();
+        settingsTable.setFillParent(true);
+        settingsTable.setVisible(false);
+
+        Label settingsLabel = new Label("Settings", skin);
+        settingsLabel.setFontScale(2f);
+
+        TextButton backButton = new TextButton("Back", skin);
+        backButton.addListener(new ChangeListener() {
+            @Override
+            public void changed(ChangeEvent event, Actor actor) {
+                showPauseMenu();
+            }
+        });
+
+        // Add dummy settings options
+        Label volumeLabel = new Label("Volume", skin);
+        Slider volumeSlider = new Slider(0, 100, 1, false, skin);
+        volumeSlider.setValue(50);
+
+        Label graphicsLabel = new Label("Graphics Quality", skin);
+        SelectBox<String> graphicsSelectBox = new SelectBox<>(skin);
+        graphicsSelectBox.setItems("Low", "Medium", "High");
+
+        settingsTable.add(settingsLabel).colspan(2).pad(20).row();
+        settingsTable.add(volumeLabel).pad(10);
+        settingsTable.add(volumeSlider).pad(10).row();
+        settingsTable.add(graphicsLabel).pad(10);
+        settingsTable.add(graphicsSelectBox).pad(10).row();
+        settingsTable.add(backButton).colspan(2).pad(20);
+
+        hudStage.addActor(settingsTable);
+    }
+
+    public void updateHUD(float delta, ClientPlayer player) {
         // Update fuel and tool information
         player.setFuel(Math.max(0, player.getFuel() - delta * 0.5f)); // Fuel decreasing
         fuelLabel.setText("Fuel: " + (int) player.getFuel());
         toolLabel.setText("Tool: " + player.getSelectedToolType().name());
+    }
+
+    private void togglePause() {
+        isPaused = !isPaused;
+        pauseMenuTable.setVisible(isPaused);
+        settingsTable.setVisible(false);
+
+        if (isPaused) {
+            Gdx.input.setInputProcessor(hudStage);
+        } else {
+            Gdx.input.setInputProcessor(null);
+        }
+    }
+
+    private void showSettingsMenu() {
+        pauseMenuTable.setVisible(false);
+        settingsTable.setVisible(true);
+    }
+
+    private void showPauseMenu() {
+        pauseMenuTable.setVisible(true);
+        settingsTable.setVisible(false);
     }
 
     public void renderHUD() {
@@ -190,21 +218,31 @@ public class GameScreen implements Screen {
         return hudStage;
     }
 
-    private void renderEntities(Player player) {
+    private void renderEntities(ClientPlayer player) {
         Vector2 currentChunk = getChunkCoords(player.getPosition());
 
         for (int dx = -1; dx <= 1; dx++) {
             for (int dy = -1; dy <= 1; dy++) {
                 Vector2 neighborChunk = new Vector2(currentChunk.x + dx, currentChunk.y + dy);
-                List<Entity> entities = chunkEntities.get(neighborChunk);
+                List<Entity> entities = game.chunkEntities.get(neighborChunk);
                 if (entities != null) {
-                    for (Entity entity : entities) {
-                        entity.render(shapeRenderer, player);
-                        //entity.update(player);
+                    for (int i = 0; i < entities.size(); i++) {
+                        ClientEntity entity = (ClientEntity) entities.get(i);
+                        if (entity.isAlive(player)) {
+                            entity.render(shapeRenderer, player);
+                        }
                     }
                 }
             }
         }
+        //shapeRenderer.begin(ShapeRenderer.ShapeType.Filled);
+        for (int i = 0; i < game.entities.size(); i++) {
+            ClientEntity entity = (ClientEntity) game.entities.get(i);
+            if (entity.isAlive(player)) {
+                entity.render(shapeRenderer, player);
+            }
+        }
+        //shapeRenderer.end();
     }
 
     @Override
@@ -212,9 +250,16 @@ public class GameScreen implements Screen {
         // Clear the screen
         Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 
+        // ESC key to pause the game
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            togglePause();
+        }
+
         // Update game logic
-        update(delta);
-        updateHUD(delta, player);
+        if (!isPaused) {
+            update(delta);
+            updateHUD(delta, player);
+        }
 
         // Draw everything
         camera.update();
@@ -241,11 +286,6 @@ public class GameScreen implements Screen {
     }
 
     private void update(float delta) {
-        // ESC key to pause the game
-        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
-            game.pauseGame();
-        }
-
         if (Gdx.input.isKeyJustPressed(Input.Keys.T)) {
             toggleCameraMode();
         }
@@ -260,15 +300,64 @@ public class GameScreen implements Screen {
             camera.zoom = 6;
         }
 
-        player.update(delta, planet, chunkEntities.values(), camera);
+        player.update(delta, planet, game.chunkEntities.values(), camera);
 
-        loadNearbyChunks(player.getPosition());
+        PacketInPlayerMovement playerUpdate = new PacketInPlayerMovement();
+        playerUpdate.username = player.getUsername();
+        playerUpdate.position = player.getPosition();
+        playerUpdate.velocity = player.getVelocity();
+        game.getClient().sendTCP(playerUpdate);
 
-        for (List<Entity> entities : chunkEntities.values()) {
-            for (Entity entity : entities) {
-                entity.update(player);
+        //for (int j = 0; j < game.entities.size(); j++) {
+        //    ClientEntity entity = (ClientEntity) game.entities.get(j);
+            // Render breakable entity pieces globally to avoid disappearing pieces once player leaves chunk
+            /*if (entity instanceof BreakableEntity) {
+                if (!entity.isAlive(player) && !((BreakableEntity) entity).getPieces().isEmpty()) {
+                    entity.render(shapeRenderer, player);
+                } else if (!entity.isAlive(player) && ((BreakableEntity) entity).getPieces().isEmpty()) {
+                    entity.onDeath(player);
+                    PacketInRemoveEntity removePacket = new PacketInRemoveEntity();
+                    removePacket.entityId = entity.getId();
+                    game.getClient().sendTCP(removePacket);
+                    game.entities.remove(entity);
+                }
+            }*/
+
+        //    if (!entity.isAlive(player)/* && !(entity instanceof BreakableEntity)*/) {
+        //        entity.onDeath(player);
+        //        PacketInRemoveEntity removePacket = new PacketInRemoveEntity();
+        //        removePacket.entityId = entity.getId();
+        //        game.getClient().sendTCP(removePacket);
+        //        game.entities.remove(entity);
+        //    }
+        //}
+
+        /*for (List<Entity> entities : game.chunkEntities.values()) {
+            for (int j = 0; j < entities.size(); j++) {
+                ClientEntity entity = (ClientEntity) entities.get(j);
+                //entity.update(player);
+                // Render breakable entity pieces globally to avoid disappearing pieces once player leaves chunk
+                if (entity instanceof BreakableEntity) {
+                    if (!entity.isAlive(player) && !((BreakableEntity) entity).getPieces().isEmpty()) {
+                        entity.render(shapeRenderer, player);
+                    } else if (!entity.isAlive(player) && ((BreakableEntity) entity).getPieces().isEmpty()) {
+                        entity.onDeath(player);
+                        PacketInRemoveEntity removePacket = new PacketInRemoveEntity();
+                        removePacket.entityId = entity.getId();
+                        game.getClient().sendTCP(removePacket);
+                        entities.remove(entity);
+                    }
+                }
+
+                if (!entity.isAlive(player) && !(entity instanceof BreakableEntity)) {
+                    entity.onDeath(player);
+                    PacketInRemoveEntity removePacket = new PacketInRemoveEntity();
+                    removePacket.entityId = entity.getId();
+                    game.getClient().sendTCP(removePacket);
+                    entities.remove(entity);
+                }
             }
-        }
+        }*/
 
         for (AI ai : aiCircles) {
             ai.update(delta, player, aiCircles, planet);
@@ -279,9 +368,9 @@ public class GameScreen implements Screen {
 
         // Check if game over
         if (player.isAbsorbed()) {
-            game.pauseGame(); // Later, show a "Game Over" screen
+            togglePause(); // Later, show a "Game Over" screen
         } else if (aiCircles.isEmpty()) {
-            game.pauseGame(); // Later, show a "You Won" screen
+            togglePause(); // Later, show a "You Won" screen
         }
     }
 
@@ -296,6 +385,11 @@ public class GameScreen implements Screen {
     @Override
     public void resize(int width, int height) {
         camera.setToOrtho(false, width, height);
+        hudStage.getViewport().update(width, height, true);
+
+        // Recalculate the table layout for pause menu and settings
+        pauseMenuTable.invalidateHierarchy();
+        settingsTable.invalidateHierarchy();
     }
 
     @Override
